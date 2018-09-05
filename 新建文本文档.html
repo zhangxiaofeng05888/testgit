@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+		<title>vue</title>
+		<style>
+			#app{
+				text-align:center;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="app">
+			<form>
+				<input type="text" v-model="number" />
+				<button type="button" v-click="increment">����</button>
+			</form>
+			<h3 v-bind="number"></h3>
+		</div>
+		<script>
+			function myVue(option){
+				this._init(option)
+			}
+			
+			myVue.prototype._init = function(options){
+				this.$options = options
+				this.$el = document.querySelector(options.el)
+				this.$data = options.data
+				this.$methods = options.methods
+				
+				this._binding = {}
+				
+				this._obsever(this.$data)
+				this._compile(this.$el)
+			}
+			
+			myVue.prototype._obsever = function(data){
+				let _this = this
+				Object.keys(data).forEach(function(key){
+					let value = data[key]
+					_this._binding[key] = []
+					let binding = _this._binding[key]
+					Object.defineProperty(data,key,{
+						enumerable:true,
+						configurable:true,
+						get:function(){
+							return value
+						},
+						set:function(newVal){
+							if(newVal !== value){
+								value = newVal
+								_this._binding[key].forEach(function(item){
+									item.update()
+								})
+							}
+						}
+					})
+				})
+			}
+			
+			myVue.prototype._compile = function(el){
+				let _this = this
+				let nodes = el.children
+				for(let i=0;i<nodes.length;i++){
+					let node = nodes[i]
+					if(node.length > 0){
+						_this._compile(node)
+					}
+					if(node.hasAttribute('v-click')){
+						let attrVal = node.getAttribute('v-click')
+						node.onclick = _this.$methods[attrVal].bind(_this.$data)
+					}
+					if(node.hasAttribute('v-model')){
+						let attrVal = node.getAttribute('v-model')
+						_this._binding[attrVal].push(new Watcher(
+							'input',
+							node,
+							_this,
+							attrVal,
+							'value'
+						))
+						node.addEventListener('input',function(){
+							_this.$data[attrVal] = node.value
+						})
+					}
+					if(node.hasAttribute('v-bind')){
+						let attrVal = node.getAttribute('v-bind')
+						_this._binding[attrVal].push(new Watcher(
+							'text',
+							node,
+							_this,
+							attrVal,
+							'innerHTML'
+						))
+					}
+				}
+			}
+			
+			function Watcher(type,el,vm,attr,nativeVal){
+				this.type = type
+				this.el = el
+				this.vm = vm
+				this.attr = attr
+				this.nativeVal = nativeVal
+				
+				this.update()
+			}
+			
+			Watcher.prototype.update = function(){
+				this.el[this.nativeVal] = this.vm.$data[this.attr]
+			}
+			
+			window.onload = function(){
+				new myVue({
+					el:'#app',
+					data:{
+						number:0,
+						count:1
+					},
+					methods:{
+						increment:function(){
+							this.number++
+						},
+						incre:function(){
+							this.count++
+						}
+					}
+				})
+			}
+		</script>
+	</body>
+</html>
